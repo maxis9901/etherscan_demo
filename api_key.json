@@ -1,0 +1,4 @@
+{ 
+    "EtherscanKey":"your etherscan api key",
+    "InfuraUrl": "https://mainnet.infura.io/v3/yourKey"
+}

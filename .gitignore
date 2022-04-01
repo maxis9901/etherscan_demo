@@ -127,3 +127,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# custom files
+output/
+logs/
+api_key(個人).json
+testEtherGet_transaction_page.py
+testEvent.py
+.vscode/launch.json
