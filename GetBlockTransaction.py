@@ -1,12 +1,6 @@
-from etherscan.blocks import Blocks
 from etherscan.contracts import Contract
-from etherscan.accounts import Account
 from etherscan.proxies import Proxies
-from web3 import Web3
-
 import json
-import datetime
-from pathlib import Path
 import pandas as pd
 import argparse
 
@@ -23,11 +17,7 @@ startBlock = args.block[0]
 endBlock = args.block[1]
 print(f'Block {startBlock} to {endBlock}')
 
-
-
 dataList = list()
-
-
 
 def copyTran(dataList, tran) -> dict:
     dataDic = dict()
@@ -50,6 +40,22 @@ def copyTran(dataList, tran) -> dict:
     dataList.append(dataDic)
     return dataDic
 
+def getNewContractAddress(txNo):
+    '''
+    取得 Transcation 的 contractAddress 內容
+    '''
+    api = Proxies(api_key=key)
+    receipt = api.get_transaction_receipt(tx_hash = txNo)
+    return receipt['contractAddress']
+
+def checkIsContractAddress(address):
+    '''
+    判斷是否為合約地址
+    '''
+    proxyApi = Proxies(api_key=key)
+    receipt = proxyApi.get_code(address = address)
+    # 判斷是否為合約, 合約回傳 byteCode, 不是合約回傳 0x
+    return receipt != '0x'
 
 
 with open('./api_key.json', mode='r') as key_file:
@@ -68,20 +74,35 @@ while currentBlock <= endBlock:
         # print(tran)
         tranDic = copyTran(dataList, tran)
         toAddress = tranDic["to"]
+        contractName = ""
+        contractAddress = ""
+        isContractAddress = False
         if toAddress == None:
-            continue
+            contractAddress =  getNewContractAddress(tran['hash'])
+            isContractAddress = True
+        else:
+            # 判斷是否為合約地址
+            isContractAddress = checkIsContractAddress(toAddress)
+            if isContractAddress:
+                contractAddress =  toAddress
 
-        if toAddress in contractMap.keys():
+
+        if contractAddress in contractMap.keys():
             continue
         
-        contractMap[toAddress] = toAddress
-        contractApi = Contract(address=toAddress, api_key=key)
-        contractContent = contractApi.get_sourcecode()
-        contractName = contractContent[0]['ContractName']
-        # update address -> contract name
-        contractMap[toAddress] = contractName
+        # 為合約地址
+        if isContractAddress:
+            contractMap[contractAddress] = contractAddress
+            contractApi = Contract(address=contractAddress, api_key=key)
+            contractContent = contractApi.get_sourcecode()
+            contractName = contractContent[0]['ContractName']
+            # update address -> contract name
+            contractMap[contractAddress] = contractName
+
+
         tranDic["contractName"] = contractName
-        tranDic["contractAddress"] = toAddress
+        tranDic["contractAddress"] = contractAddress
+
         if len(contractName):
             print(f"find contract, {contractName}")
 
